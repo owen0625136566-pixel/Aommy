@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>กบคอยถามไถ่</title>
+<style>
+  :root { --ink:#29443b; --green:#bde8a7; --deep:#4f8b62; --cream:#fffdf0; --pink:#f6b8c8; }
+  * { box-sizing:border-box; }
+  body {
+    margin:0; min-height:100vh; overflow:hidden; color:var(--ink);
+    font-family: "Noto Sans Thai", "Tahoma", sans-serif;
+    background: radial-gradient(circle at 15% 20%, #fff7d6 0 8%, transparent 28%),
+                radial-gradient(circle at 85% 75%, #d9f3d0 0 8%, transparent 32%),
+                linear-gradient(135deg,#e8f8dc,#d8f1ef);
+    display:grid; place-items:center;
+  }
+  .pond { position:fixed; inset:0; pointer-events:none; overflow:hidden; }
+  .frog {
+    position:absolute; font-size:clamp(28px,4vw,48px); opacity:.8;
+    filter: drop-shadow(0 5px 0 #a9d4a2);
+    animation: floaty var(--dur,8s) ease-in-out infinite alternate;
+    user-select:none;
+  }
+  .frog:nth-child(1){left:7%;top:15%;--dur:7s}
+  .frog:nth-child(2){right:9%;top:20%;--dur:9s;animation-delay:-2s}
+  .frog:nth-child(3){left:12%;bottom:13%;--dur:8s;animation-delay:-3s}
+  .frog:nth-child(4){right:13%;bottom:12%;--dur:6.5s;animation-delay:-1s}
+  .frog:nth-child(5){left:47%;top:5%;--dur:10s;animation-delay:-4s;font-size:30px}
+  @keyframes floaty { from{transform:translate(0,0) rotate(-8deg)} to{transform:translate(18px,-22px) rotate(9deg)} }
+  .card {
+    position:relative; z-index:1; width:min(90vw,520px); min-height:340px;
+    padding:clamp(25px,6vw,44px) 24px 30px; border-radius:32px;
+    background:rgba(255,253,240,.91); border:3px solid rgba(255,255,255,.9);
+    box-shadow:0 18px 45px #568f7040; text-align:center;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+  }
+  .frog-face { font-size:64px; line-height:1.2; margin-bottom:16px; animation:bob 2.4s ease-in-out infinite; }
+  @keyframes bob { 50%{transform:translateY(-6px)} }
+  h1 { font-size:clamp(22px,5vw,31px); line-height:1.55; margin:0 0 25px; font-weight:800; }
+  .buttons { width:100%; display:flex; justify-content:center; align-items:center; flex-wrap:wrap; gap:13px; min-height:58px; }
+  button {
+    font:inherit; font-size:17px; font-weight:700; border:0; border-radius:18px;
+    padding:13px 22px; min-width:118px; cursor:pointer; transition:transform .18s ease, box-shadow .18s ease;
+    box-shadow:0 5px 0 #00000013;
+  }
+  button:active { transform:translateY(2px); box-shadow:0 2px 0 #00000013; }
+  .yes { background:#9edb91; color:#234b31; }
+  .yes:hover { background:#8bd27b; }
+  .no { background:#f7d6df; color:#6e4550; position:relative; }
+  .highlight { background:#9edb91; color:#234b31; transform:scale(1.04); box-shadow:0 0 0 5px #9edb9145,0 5px 0 #00000013; }
+  .single { min-width:160px; }
+  .final h1 { margin-bottom:0; }
+  @media (max-width:420px) {
+    .card{min-height:320px;padding:28px 18px;border-radius:26px}
+    button{min-width:112px;padding:12px 16px;font-size:16px}
+    .frog-face{font-size:56px}
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,*::before,*::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; transition:none !important; }
+  }
+</style>
+</head>
+<body>
+  <div class="pond" aria-hidden="true">
+    <span class="frog">🐸</span><span class="frog">🐸</span><span class="frog">🐸</span>
+    <span class="frog">🐸</span><span class="frog">🐸</span>
+  </div>
+  <main class="card" id="card" aria-live="polite">
+    <div class="frog-face" id="face">🐸</div>
+    <h1 id="question">เป็นไรมั้ย</h1>
+    <div class="buttons" id="buttons"></div>
+  </main>
+<script>
+  const pages = [
+    { q:"เป็นไรมั้ย", options:[
+      {text:"ไม่เป็นไร", blocked:true, cls:"no"},
+      {text:"ยังร้องไห้อยู่", next:1, cls:"yes highlight"}
+    ]},
+    { q:"น่าน แล้วไปหาอะไรกินยัง", options:[
+      {text:"ยัง", next:2, cls:"yes"},
+      {text:"กินแล้ว", blocked:true, cls:"no"}
+    ]},
+    { q:"ก็ไปกินสิ หรือไม่ก็ไปหาอะไรดูสนุกๆ หน่อย", options:[
+      {text:"ได้", next:3, cls:"yes"},
+      {text:"ไม่เอา", blocked:true, cls:"no"}
+    ]},
+    { q:"อย่านอนดึกมาก หน้าจะไม่สวย", options:[
+      {text:"จะนอนจริงๆ แล้ว", next:4, cls:"yes"},
+      {text:"ไม่ง่วง", blocked:true, cls:"no"}
+    ]},
+    { q:"ไม่ง่วงก็ควรนอนไม่เกินเที่ยงคืนนะ เข้าใจมั้ย", options:[
+      {text:"เข้าใจ", next:5, cls:"yes single"}
+    ]},
+    { q:"ฉันจะนอนแล้ว ฝันดี", final:true }
+  ];
+  let current = 0;
+  const question = document.getElementById("question");
+  const buttons = document.getElementById("buttons");
+  const face = document.getElementById("face");
+  const card = document.getElementById("card");
+
+  function render(index) {
+    current = index;
+    const page = pages[index];
+    question.textContent = page.q;
+    buttons.replaceChildren();
+    face.textContent = page.final ? "🐸💤" : (index === 0 ? "🐸" : index === 5 ? "🐸🌙" : "🐸");
+    card.classList.toggle("final", !!page.final);
+    if (page.final) return;
+    page.options.forEach(opt => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = opt.text;
+      b.className = opt.cls || "yes";
+      if (opt.blocked) {
+        const runAway = (ev) => {
+          ev.preventDefault();
+          // Move the button to a random spot across the whole visible screen.
+          // Fixed positioning keeps it independent of the card/button row.
+          const pad = 12;
+          const bw = b.offsetWidth || 130;
+          const bh = b.offsetHeight || 52;
+          const maxX = Math.max(pad, window.innerWidth - bw - pad);
+          const maxY = Math.max(pad, window.innerHeight - bh - pad);
+          const x = pad + Math.random() * (maxX - pad);
+          const y = pad + Math.random() * (maxY - pad);
+          b.style.position = "fixed";
+          b.style.left = `${x}px`;
+          b.style.top = `${y}px`;
+          b.style.zIndex = "20";
+          b.style.transform = `rotate(${Math.random()*24-12}deg)`;
+          b.style.transition = "left .18s ease-out, top .18s ease-out, transform .18s ease-out";
+        };
+        // On touch screens, move away on the first touch before a click can activate.
+        b.addEventListener("pointerenter", runAway);
+        b.addEventListener("pointerdown", (ev) => {
+          ev.preventDefault();
+          runAway(ev);
+        });
+        b.addEventListener("click", (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          runAway(ev);
+        });
+        b.setAttribute("aria-label", opt.text + " (ปุ่มหนี)");
+      } else {
+        b.addEventListener("click", () => render(opt.next));
+      }
+      buttons.appendChild(b);
+    });
+  }
+  render(0);
+</script>
+</body>
+</html>
